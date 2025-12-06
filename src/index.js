@@ -11,6 +11,11 @@ import { startDailyRecipeJob } from "./jobs/dailyRecipeJob.js";
 import morgan from "morgan";
 import path from "path";
 import { fileURLToPath } from "url";
+import swaggerUi from "swagger-ui-express";
+import { createRequire } from "module";
+
+const require = createRequire(import.meta.url);
+const swaggerDocument = require("./docs/swagger.json");
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -34,7 +39,11 @@ app.use(express.json());
 // Serve uploaded files statically
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
-app.use("/api/v1/auth", authRoutes);
+// Swagger Documentation
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
+// Routes
+app.use("/api/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/recipes", recipeRoutes);
 app.use("/api/v1/recipes/:id/comments", commentRoutes);

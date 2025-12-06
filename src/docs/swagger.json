@@ -1,0 +1,542 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Recipe App API",
+    "version": "1.0.0",
+    "description": "Backend API for the Recipe Application, featuring user authentication, recipe management, social features, and daily recipes."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5001/api/v1",
+      "description": "Local Development Server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "username": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Recipe": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "ingredients": { "type": "array", "items": { "type": "string" } },
+          "instructions": { "type": "string" },
+          "prepTime": { "type": "integer" },
+          "cookTime": { "type": "integer" },
+          "servings": { "type": "integer" },
+          "imageUrl": { "type": "string" },
+          "authorId": { "type": "string", "format": "uuid" },
+          "isDaily": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Comment": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "text": { "type": "string" },
+          "rating": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "userId": { "type": "string", "format": "uuid" },
+          "recipeId": { "type": "string", "format": "uuid" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "summary": "Register a new user",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["username", "email", "password"],
+                "properties": {
+                  "username": { "type": "string" },
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string", "minLength": 8 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User registered successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "user": { "$ref": "#/components/schemas/User" },
+                    "token": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Validation error" },
+          "409": { "description": "User already exists" }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Login user",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "token": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Invalid credentials" }
+        }
+      }
+    },
+    "/users/me": {
+      "get": {
+        "summary": "Get current user profile",
+        "tags": ["Users"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "User profile",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/User" }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/recipes": {
+      "get": {
+        "summary": "List recipes",
+        "tags": ["Recipes"],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 10 }
+          },
+          { "name": "search", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of recipes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Recipe" }
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "total": { "type": "integer" },
+                        "page": { "type": "integer" },
+                        "limit": { "type": "integer" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new recipe",
+        "tags": ["Recipes"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["title", "description", "instructions"],
+                "properties": {
+                  "title": { "type": "string" },
+                  "description": { "type": "string" },
+                  "ingredients": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                  },
+                  "instructions": { "type": "string" },
+                  "prep_time": { "type": "integer" },
+                  "cook_time": { "type": "integer" },
+                  "servings": { "type": "integer" },
+                  "image_url": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Recipe created" },
+          "400": { "description": "Missing required fields" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/recipes/daily": {
+      "get": {
+        "summary": "Get the daily featured recipe",
+        "tags": ["Recipes"],
+        "responses": {
+          "200": {
+            "description": "Daily recipe",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Recipe" }
+              }
+            }
+          },
+          "404": { "description": "No daily recipe set" }
+        }
+      }
+    },
+    "/recipes/search": {
+      "get": {
+        "summary": "Search recipes",
+        "tags": ["Recipes"],
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Recipe" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/recipes/{id}": {
+      "get": {
+        "summary": "Get recipe details",
+        "tags": ["Recipes"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recipe details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Recipe" }
+              }
+            }
+          },
+          "404": { "description": "Recipe not found" }
+        }
+      },
+      "put": {
+        "summary": "Update a recipe",
+        "tags": ["Recipes"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string" },
+                  "description": { "type": "string" },
+                  "ingredients": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                  },
+                  "instructions": { "type": "string" },
+                  "prep_time": { "type": "integer" },
+                  "cook_time": { "type": "integer" },
+                  "servings": { "type": "integer" },
+                  "image_url": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Recipe updated" },
+          "404": { "description": "Recipe not found or unauthorized" }
+        }
+      },
+      "delete": {
+        "summary": "Delete a recipe",
+        "tags": ["Recipes"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Recipe deleted" },
+          "404": { "description": "Recipe not found or unauthorized" }
+        }
+      }
+    },
+    "/upload": {
+      "post": {
+        "summary": "Upload an image",
+        "tags": ["Upload"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "image": { "type": "string", "format": "binary" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Image uploaded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "imageUrl": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "No file uploaded" }
+        }
+      }
+    },
+    "/favorites": {
+      "get": {
+        "summary": "Get user favorites",
+        "tags": ["Favorites"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "List of favorite recipes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Recipe" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/favorites/{id}": {
+      "post": {
+        "summary": "Add recipe to favorites",
+        "tags": ["Favorites"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "201": { "description": "Added to favorites" },
+          "400": { "description": "Already favorited" },
+          "404": { "description": "Recipe not found" }
+        }
+      },
+      "delete": {
+        "summary": "Remove recipe from favorites",
+        "tags": ["Favorites"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Removed from favorites" },
+          "404": { "description": "Favorite not found" }
+        }
+      }
+    },
+    "/recipes/{id}/comments": {
+      "get": {
+        "summary": "Get comments for a recipe",
+        "tags": ["Comments"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of comments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Comment" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a comment",
+        "tags": ["Comments"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["text", "rating"],
+                "properties": {
+                  "text": { "type": "string" },
+                  "rating": { "type": "integer", "minimum": 1, "maximum": 5 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Comment added" },
+          "400": { "description": "Invalid input" }
+        }
+      }
+    },
+    "/recipes/{id}/comments/{commentId}": {
+      "delete": {
+        "summary": "Delete a comment",
+        "tags": ["Comments"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "commentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Comment deleted" },
+          "404": { "description": "Comment not found or unauthorized" }
+        }
+      }
+    }
+  }
+}
