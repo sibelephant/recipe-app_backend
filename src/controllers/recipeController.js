@@ -1,6 +1,31 @@
 import { db } from "../db/index.js";
 import { recipes, users } from "../db/schema.js";
-import { eq, ilike, and, sql } from "drizzle-orm";
+import { eq, ilike, and, or, sql } from "drizzle-orm";
+
+export const searchRecipes = async (req, res) => {
+  try {
+    const { query } = req.query;
+    if (!query) {
+      return res.status(400).json({ message: "Search query is required" });
+    }
+
+    const results = await db
+      .select()
+      .from(recipes)
+      .where(
+        or(
+          ilike(recipes.title, `%${query}%`),
+          ilike(recipes.description, `%${query}%`)
+        )
+      )
+      .limit(20);
+
+    res.json(results);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
 
 export const createRecipe = async (req, res) => {
   try {
@@ -12,6 +37,7 @@ export const createRecipe = async (req, res) => {
       prep_time,
       cook_time,
       servings,
+      image_url,
     } = req.body;
     const authorId = req.user.id;
 
@@ -31,6 +57,7 @@ export const createRecipe = async (req, res) => {
         prepTime: prep_time,
         cookTime: cook_time,
         servings,
+        imageUrl: image_url,
         authorId,
       })
       .returning();
@@ -159,6 +186,7 @@ export const updateRecipe = async (req, res) => {
     if (updates.prep_time) updateData.prepTime = updates.prep_time;
     if (updates.cook_time) updateData.cookTime = updates.cook_time;
     if (updates.servings) updateData.servings = updates.servings;
+    if (updates.image_url) updateData.imageUrl = updates.image_url;
 
     const [updatedRecipe] = await db
       .update(recipes)
