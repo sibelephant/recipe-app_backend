@@ -2,6 +2,9 @@
 node_modules/
 jspm_packages/
 
+.vscode/
+API_SPEC.md
+
 # Environment variables
 .env
 .env.test
