@@ -4,6 +4,9 @@ import { eq } from "drizzle-orm";
 
 export const getMe = async (req, res) => {
   try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
     const userId = req.user.id;
     const [user] = await db
       .select({

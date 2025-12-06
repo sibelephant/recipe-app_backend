@@ -12,7 +12,14 @@ const PORT = ENV.PORT;
 // Start Cron Jobs
 startDailyRecipeJob();
 
-app.use(cors());
+app.use(
+  cors({
+    origin: ENV.ALLOWED_ORIGINS
+      ? ENV.ALLOWED_ORIGINS.split(",")
+      : "http://localhost:3000",
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 app.use("/api/v1/auth", authRoutes);

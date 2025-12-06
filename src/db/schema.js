@@ -1,4 +1,11 @@
-import { pgTable, serial, text, integer, timestamp, boolean } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  serial,
+  text,
+  integer,
+  timestamp,
+  boolean,
+} from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -17,7 +24,9 @@ export const recipes = pgTable("recipes", {
   prepTime: integer("prep_time"),
   cookTime: integer("cook_time"),
   servings: integer("servings"),
-  authorId: integer("author_id").references(() => users.id),
+  authorId: integer("author_id")
+    .references(() => users.id)
+    .onDelete("cascade"),
   isDaily: boolean("is_daily").default(false), // For the daily recipe feature
   createdAt: timestamp("created_at").defaultNow(),
 });
